@@ -1,1 +1,42 @@
-// TODO
+.main{
+  display:flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  margin-left: 23rem;
+
+  .container{
+    a{
+      h1{
+        font-size: 1.75rem;
+        font-weight: 700;
+        margin-top: 4rem;
+
+      }
+      p{
+        margin-top: 0.5rem;
+        font-size: 1.125rem;
+        font-weight: 400;
+      }
+
+      .iconsContainer{
+        display:flex;
+        gap: 1rem;
+        margin-top: 1.5rem;
+        span{
+          display:flex;
+          gap: 0.5rem;
+        }
+      }
+
+      }
+      .loadMore{
+        margin-top: 5rem;
+        margin-bottom: 5rem;
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: var(--highlight);
+      }
+  }
+}
+
