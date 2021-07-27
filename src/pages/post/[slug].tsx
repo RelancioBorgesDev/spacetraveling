@@ -8,6 +8,10 @@ import Prismic from '@prismicio/client'
 
 import commonStyles from '../../styles/common.module.scss';
 import styles from './post.module.scss';
+import { RichText } from 'prismic-dom';
+import { useRouter } from 'next/router';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale'
 
 interface Post {
   first_publication_date: string | null;
@@ -30,93 +34,101 @@ interface PostProps {
   post: Post;
 }
 
- export default function Post({post}: PostProps) {
+
+ export default  function Post({post} : PostProps) {
+   const totalWords = post.data.content.reduce((total, contentItem) =>{
+     total += contentItem.heading.split(' ').length
+
+     const words = contentItem.body.map(item => item.text.split(' ').length)
+
+     words.map(word => (total += word))
+     return total
+   },0)
+
+   const readTime = Math.ceil(totalWords / 200)
+
+
+   const router = useRouter();
+
+    if(router.isFallback){
+      return <h1>Carregando...</h1>
+    }
+
+    const formatDate = format(
+      new Date(post.first_publication_date),
+      'dd MMM yyyy',
+      {
+        locale: ptBR
+      }
+    )
+
     return(
       <div>
         <div className={styles.header}>
           <Header/>
         </div>
-        <img src="/test.png" alt="imagem" className={styles.banner} />
+        <img src={post.data.banner.url} alt="imagem" className={styles.banner} />
         <main className={commonStyles.container}>
             <div className={styles.post}>
               <div className={styles.postTop}>
-                  <h1>Titulo</h1>
+                  <h1>{post.data.title}</h1>
                   <ul>
                     <li>
                       <FiCalendar/>
-                      26 JUL 21
+                      {formatDate}
                     </li>
                     <li>
                       <FiUser/>
-                      Relancio Borges
+                      {post.data.author}
                     </li>
                     <li>
                     <FiClock/>
-                    5 min
+                    {`${readTime} min`}
                     </li>
                   </ul>
               </div>
 
-              <article>
-                <h2>Titulo section</h2>
-                <p>Lorem ipsum dolor sit amet consectetur, adipisicing elit. Illo porro deserunt aperiam cum, atque sit assumenda, similique architecto commodi temporibus laborum at nemo sequi sed dignissimos eligendi debitis cupiditate nostrum.</p>
-              </article>
+              {post.data.content.map(content =>{
+                return(
+                  <article key={content.heading}>
+                    <h2>{content.heading}</h2>
+                    <div
+                    className={styles.postContent}
+                    dangerouslySetInnerHTML={{__html: RichText.asHtml(content.body)}}
+                    />
+                  </article>
+                )
+              })}
             </div>
         </main>
       </div>
     )
  }
 
- export const getStaticPaths: GetStaticPaths = async () => {
+  export const getStaticPaths = async () => {
   const prismic = getPrismicClient();
-  const posts = await prismic.query([
-    Prismic.Predicates.at('document.type', 'posts'),
+  const posts = await prismic.query([Prismic.Predicates.at('document.type','post')
   ]);
-
-  const paths = posts.results.map(post => {
-    return {
-      params: {
+  const paths = posts.results.map(post =>{
+    return{
+      params:{
         slug: post.uid,
-      },
-    };
-  });
-
-  return {
-    paths,
-    fallback: true,
-  };
-};
-
-export const getStaticProps: GetStaticProps = async ({
-  params,
-  preview = false,
-  previewData,
-}) => {
-  const prismic = getPrismicClient();
-  const { slug } = params;
-  const response = await prismic.getByUID('posts', String(slug), {
-    ref: previewData?.ref || null,
-  });
-
-  const prevPost = await prismic.query(
-    [Prismic.Predicates.at('document.type', 'posts')],
-    {
-      pageSize: 1,
-      after: response.id,
-      orderings: '[document.first_publication_date]',
+      }
     }
-  );
-
-  const nextPost = await prismic.query(
-    [Prismic.Predicates.at('document.type', 'posts')],
-    {
-      pageSize: 1,
-      after: response.id,
-      orderings: '[document.last_publication_date desc]',
+  })
+    return{
+      paths,
+      fallback: true,
     }
-  );
 
-  const post = {
+ };
+
+ export const getStaticProps = async context => {
+   const prismic = getPrismicClient();
+   const { slug } = context.params
+   const response = await prismic.getByUID('post', String(slug),{});
+
+   const post = {
     uid: response.uid,
     first_publication_date: response.first_publication_date,
     last_publication_date: response.last_publication_date,
@@ -135,18 +147,9 @@ export const getStaticProps: GetStaticProps = async ({
       }),
     },
   };
-
-  return {
-    props: {
-      post,
-      navigation: {
-        prevPost: prevPost?.results,
-        nextPost: nextPost?.results,
-      },
-      preview,
-    },
-    revalidate: 1800,
-  };
-};
-
-//1:07:27
+   return {
+     props:{
+       post
+     }
+   }
+ };
